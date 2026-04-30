@@ -8,9 +8,10 @@ interface TopBarProps {
   onImportXmlClick?: () => void;
   onExportXmlClick?: () => void;
   onEnvironmentClick?: () => void;
+  onExecuteClick?: () => void;
 }
 
-export function TopBar({ onImportClick, onSettingsClick, onImportXmlClick, onExportXmlClick, onEnvironmentClick }: TopBarProps) {
+export function TopBar({ onImportClick, onSettingsClick, onImportXmlClick, onExportXmlClick, onEnvironmentClick, onExecuteClick }: TopBarProps) {
   const { execute, running } = useExecution();
   const nodes = useFlowStore((s) => s.nodes);
   const hasNodes = nodes.length > 0;
@@ -75,7 +76,7 @@ export function TopBar({ onImportClick, onSettingsClick, onImportXmlClick, onExp
           Exportar XML
         </button>
         <button
-          onClick={execute}
+          onClick={() => { onExecuteClick?.(); execute(); }}
           disabled={running || !hasNodes}
           className={`px-3 py-1.5 text-xs rounded transition-colors ${
             running

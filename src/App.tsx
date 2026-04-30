@@ -9,6 +9,7 @@ import { FlowCanvas } from './components/canvas/FlowCanvas';
 import { PropertiesPanel } from './components/panel/PropertiesPanel';
 import { Modal } from './components/ui/Modal';
 import { EnvironmentModal } from './components/environment/EnvironmentModal';
+import { ExecutionModal } from './components/execution/ExecutionModal';
 import { useFlowStore } from './store/flowStore';
 import { useXmlIO } from './hooks/useXmlIO';
 
@@ -18,6 +19,7 @@ export default function App() {
   const [envModalOpen, setEnvModalOpen] = useState(false);
   const [exportNameOpen, setExportNameOpen] = useState(false);
   const [exportName, setExportName] = useState('Meu Fluxo');
+  const [executionModalOpen, setExecutionModalOpen] = useState(false);
   const selectedNodeId = useFlowStore((s) => s.selectedNodeId);
   const xmlFileRef = useRef<HTMLInputElement>(null);
   const { exportXml, importXml, error: xmlError } = useXmlIO();
@@ -40,6 +42,7 @@ export default function App() {
             onEnvironmentClick={() => setEnvModalOpen(true)}
             onImportXmlClick={() => xmlFileRef.current?.click()}
             onExportXmlClick={() => setExportNameOpen(true)}
+            onExecuteClick={() => setExecutionModalOpen(true)}
           />
         }
         sidebar={<RouteList onImportClick={() => setImportModalOpen(true)} />}
@@ -69,6 +72,10 @@ export default function App() {
       <EnvironmentModal
         open={envModalOpen}
         onClose={() => setEnvModalOpen(false)}
+      />
+      <ExecutionModal
+        open={executionModalOpen}
+        onClose={() => setExecutionModalOpen(false)}
       />
 
       {/* Export name dialog */}

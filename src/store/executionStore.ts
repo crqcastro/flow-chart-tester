@@ -6,12 +6,15 @@ interface ExecutionState {
   results: Map<string, ExecutionResult>;
   summary: ExecutionSummary | null;
   proxyUrl: string;
+  /** Node IDs in the order they started executing (for the execution modal). */
+  executionLog: string[];
 
   setRunning: (v: boolean) => void;
   updateResult: (result: ExecutionResult) => void;
   clearResults: () => void;
   setSummary: (s: ExecutionSummary) => void;
   setProxyUrl: (url: string) => void;
+  addToLog: (nodeId: string) => void;
 }
 
 const savedProxy = typeof localStorage !== 'undefined' ? localStorage.getItem('flowchart_proxy') ?? '' : '';
@@ -21,6 +24,7 @@ export const useExecutionStore = create<ExecutionState>((set) => ({
   results: new Map(),
   summary: null,
   proxyUrl: savedProxy,
+  executionLog: [],
 
   setRunning: (v) => set({ running: v }),
 
@@ -31,7 +35,10 @@ export const useExecutionStore = create<ExecutionState>((set) => ({
       return { results: next };
     }),
 
-  clearResults: () => set({ results: new Map(), summary: null }),
+  clearResults: () => set({ results: new Map(), summary: null, executionLog: [] }),
+
+  addToLog: (nodeId) =>
+    set((s) => ({ executionLog: s.executionLog.includes(nodeId) ? s.executionLog : [...s.executionLog, nodeId] })),
 
   setSummary: (summary) => set({ summary }),
 

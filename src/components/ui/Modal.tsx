@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 interface ModalProps {
   open: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   title: string;
   children: ReactNode;
   width?: string;
@@ -24,7 +24,8 @@ export function Modal({ open, onClose, title, children, width = 'max-w-lg' }: Mo
           <h2 className="text-sm font-semibold text-white">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            disabled={!onClose}
+            className="text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

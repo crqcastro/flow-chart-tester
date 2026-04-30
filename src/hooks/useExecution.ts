@@ -8,7 +8,7 @@ export function useExecution() {
   const nodes = useFlowStore((s) => s.nodes);
   const edges = useFlowStore((s) => s.edges);
   const setNodeExecutionStatus = useFlowStore((s) => s.setNodeExecutionStatus);
-  const { setRunning, updateResult, clearResults, setSummary, proxyUrl } = useExecutionStore();
+  const { setRunning, updateResult, clearResults, setSummary, addToLog, proxyUrl } = useExecutionStore();
   const running = useExecutionStore((s) => s.running);
   const getActiveVars = useEnvironmentStore((s) => s.getActiveVars);
   const setVariableValue = useEnvironmentStore((s) => s.setVariableValue);
@@ -30,6 +30,7 @@ export function useExecution() {
         vars: getActiveVars(),
         onNodeStart: (nodeId) => {
           setNodeExecutionStatus(nodeId, 'running');
+          addToLog(nodeId);
         },
         onNodeEnd: (result) => {
           const passed = result.validationResult.passed && !result.error;
@@ -57,7 +58,7 @@ export function useExecution() {
       });
     }
   }, [nodes, edges, running, proxyUrl, clearResults, setRunning, setNodeExecutionStatus,
-      updateResult, setSummary, getActiveVars, setVariableValue]);
+      updateResult, setSummary, addToLog, getActiveVars, setVariableValue]);
 
   return { execute, running };
 }

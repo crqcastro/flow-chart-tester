@@ -1,7 +1,10 @@
 import type { FlowNode, FlowEdge, NodeConfig } from '../types/flow';
+import type { ResponseExtractor } from '../types/environment';
 import type { ExecutionResult, SerializedRequest, SerializedResponse } from '../types/execution';
 import { validateResponse } from './responseValidator';
 import { applyFieldMappings, applyFullResponse } from './fieldMapper';
+import { resolveVariables } from './variableResolver';
+import { JSONPath } from 'jsonpath-plus';
 
 function topoSort(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
   const inDegree = new Map<string, number>();
@@ -35,13 +38,26 @@ function topoSort(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
     }
   }
 
-  // Include any nodes in cycles as skipped (append remaining)
   const included = new Set(sorted.map((n) => n.id));
   for (const node of nodes) {
     if (!included.has(node.id)) sorted.push(node);
   }
 
   return sorted;
+}
+
+/** Apply {{variable}} substitution to every user-editable string in the config */
+function resolveConfigVars(config: NodeConfig, vars: Record<string, string>): NodeConfig {
+  if (Object.keys(vars).length === 0) return config;
+  const r = (s: string) => resolveVariables(s, vars);
+  return {
+    ...config,
+    baseUrlOverride: config.baseUrlOverride ? r(config.baseUrlOverride) : undefined,
+    payloadJson: r(config.payloadJson),
+    headers: config.headers.map((h) => ({ ...h, key: r(h.key), value: r(h.value) })),
+    pathParams: config.pathParams.map((p) => ({ ...p, value: r(p.value) })),
+    queryParams: config.queryParams.map((q) => ({ ...q, value: r(q.value) })),
+  };
 }
 
 function buildUrl(config: NodeConfig, route: FlowNode['data']['route']): string {
@@ -67,6 +83,52 @@ function buildHeaders(config: NodeConfig): Record<string, string> {
       .filter((h) => h.enabled && h.key)
       .map((h) => [h.key, h.value])
   );
+}
+
+/** Run response extractors and return { variableName → extractedValue } */
+function runExtractors(
+  response: SerializedResponse,
+  extractors: ResponseExtractor[]
+): Record<string, string> {
+  const extracted: Record<string, string> = {};
+
+  for (const extractor of extractors) {
+    if (!extractor.variableName || !extractor.expression) continue;
+
+    try {
+      let value: string | undefined;
+
+      if (extractor.source === 'header') {
+        const headerKey = (extractor.headerName ?? extractor.expression).toLowerCase();
+        value = response.headers[headerKey];
+      } else if (extractor.extractType === 'jsonpath') {
+        const result = JSONPath({
+          path: extractor.expression,
+          json: response.bodyParsed as object,
+          wrap: false,
+        });
+        if (result !== undefined && result !== null) {
+          value = typeof result === 'string' ? result : JSON.stringify(result);
+        }
+      } else {
+        // regex
+        const re = new RegExp(extractor.expression);
+        const match = re.exec(response.body);
+        if (match) {
+          // Use first capture group if available, otherwise full match
+          value = match[1] ?? match[0];
+        }
+      }
+
+      if (value !== undefined) {
+        extracted[extractor.variableName] = value;
+      }
+    } catch {
+      // extractor failed silently — user will see no value change
+    }
+  }
+
+  return extracted;
 }
 
 async function executeNode(
@@ -126,6 +188,8 @@ async function executeNode(
       effectiveConfig.expectedMode
     );
 
+    const extractedVars = runExtractors(response, effectiveConfig.responseExtractors ?? []);
+
     return {
       nodeId: node.id,
       requestedAt,
@@ -133,11 +197,11 @@ async function executeNode(
       request,
       response,
       validationResult,
+      extractedVars,
     };
   } catch (err) {
     clearTimeout(timeoutId);
     const isAbort = (err as Error).name === 'AbortError';
-    const errorType = isAbort ? 'TIMEOUT' : 'NETWORK';
     const isCors = !isAbort && err instanceof TypeError;
     return {
       nodeId: node.id,
@@ -145,20 +209,23 @@ async function executeNode(
       durationMs: Date.now() - startTime,
       request,
       validationResult: { passed: false, checks: [] },
+      extractedVars: {},
       error: isAbort
         ? `Tempo limite esgotado (${effectiveConfig.timeoutMs}ms)`
         : isCors
         ? 'Requisição bloqueada por CORS ou erro de rede. Configure um proxy nas configurações.'
         : `Erro: ${(err as Error).message}`,
-      errorType: isCors ? 'CORS' : errorType,
+      errorType: isCors ? 'CORS' : isAbort ? 'TIMEOUT' : 'NETWORK',
     };
   }
 }
 
 export interface RunOptions {
   proxyUrl?: string;
+  vars?: Record<string, string>;
   onNodeStart?: (nodeId: string) => void;
   onNodeEnd?: (result: ExecutionResult) => void;
+  onVarsUpdated?: (vars: Record<string, string>) => void;
 }
 
 export async function runFlow(
@@ -166,7 +233,11 @@ export async function runFlow(
   edges: FlowEdge[],
   options: RunOptions = {}
 ): Promise<ExecutionResult[]> {
-  const { proxyUrl, onNodeStart, onNodeEnd } = options;
+  const { proxyUrl, onNodeStart, onNodeEnd, onVarsUpdated } = options;
+
+  // Mutable copy of vars — updated as extractors run
+  const liveVars: Record<string, string> = { ...(options.vars ?? {}) };
+
   const sorted = topoSort(nodes, edges);
   const results: ExecutionResult[] = [];
   const resultsByNodeId = new Map<string, ExecutionResult>();
@@ -174,7 +245,7 @@ export async function runFlow(
   for (const node of sorted) {
     if (!node.data.config.enabled) continue;
 
-    // Find incoming edges to resolve data flow
+    // Resolve incoming edge data flow
     const incomingEdges = edges.filter((e) => e.target === node.id);
     let effectiveConfig = { ...node.data.config };
 
@@ -194,10 +265,20 @@ export async function runFlow(
       }
     }
 
+    // Resolve {{variables}} with current live vars
+    effectiveConfig = resolveConfigVars(effectiveConfig, liveVars);
+
     onNodeStart?.(node.id);
     const result = await executeNode(node, effectiveConfig, proxyUrl);
     results.push(result);
     resultsByNodeId.set(node.id, result);
+
+    // Apply extracted vars so next nodes can use them
+    if (result.extractedVars && Object.keys(result.extractedVars).length > 0) {
+      Object.assign(liveVars, result.extractedVars);
+      onVarsUpdated?.(result.extractedVars);
+    }
+
     onNodeEnd?.(result);
   }
 

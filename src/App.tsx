@@ -8,12 +8,14 @@ import { SwaggerImportModal } from './components/swagger/SwaggerImportModal';
 import { FlowCanvas } from './components/canvas/FlowCanvas';
 import { PropertiesPanel } from './components/panel/PropertiesPanel';
 import { Modal } from './components/ui/Modal';
+import { EnvironmentModal } from './components/environment/EnvironmentModal';
 import { useFlowStore } from './store/flowStore';
 import { useXmlIO } from './hooks/useXmlIO';
 
 export default function App() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [envModalOpen, setEnvModalOpen] = useState(false);
   const [exportNameOpen, setExportNameOpen] = useState(false);
   const [exportName, setExportName] = useState('Meu Fluxo');
   const selectedNodeId = useFlowStore((s) => s.selectedNodeId);
@@ -35,6 +37,7 @@ export default function App() {
           <TopBar
             onImportClick={() => setImportModalOpen(true)}
             onSettingsClick={() => setSettingsOpen(true)}
+            onEnvironmentClick={() => setEnvModalOpen(true)}
             onImportXmlClick={() => xmlFileRef.current?.click()}
             onExportXmlClick={() => setExportNameOpen(true)}
           />
@@ -62,6 +65,10 @@ export default function App() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+      <EnvironmentModal
+        open={envModalOpen}
+        onClose={() => setEnvModalOpen(false)}
       />
 
       {/* Export name dialog */}

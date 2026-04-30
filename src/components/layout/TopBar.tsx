@@ -1,17 +1,23 @@
 import { useFlowStore } from '../../store/flowStore';
 import { useExecution } from '../../hooks/useExecution';
+import { useEnvironmentStore } from '../../store/environmentStore';
 
 interface TopBarProps {
   onImportClick?: () => void;
   onSettingsClick?: () => void;
   onImportXmlClick?: () => void;
   onExportXmlClick?: () => void;
+  onEnvironmentClick?: () => void;
 }
 
-export function TopBar({ onImportClick, onSettingsClick, onImportXmlClick, onExportXmlClick }: TopBarProps) {
+export function TopBar({ onImportClick, onSettingsClick, onImportXmlClick, onExportXmlClick, onEnvironmentClick }: TopBarProps) {
   const { execute, running } = useExecution();
   const nodes = useFlowStore((s) => s.nodes);
   const hasNodes = nodes.length > 0;
+  const environments = useEnvironmentStore((s) => s.environments);
+  const activeEnvironmentId = useEnvironmentStore((s) => s.activeEnvironmentId);
+  const setActiveEnvironment = useEnvironmentStore((s) => s.setActiveEnvironment);
+  const activeEnv = environments.find((e) => e.id === activeEnvironmentId);
 
   return (
     <header className="flex items-center justify-between px-4 h-12 bg-gray-900 border-b border-gray-800 shrink-0">
@@ -23,6 +29,30 @@ export function TopBar({ onImportClick, onSettingsClick, onImportXmlClick, onExp
         <span className="text-xs text-gray-500 hidden sm:inline">— Testador Visual de APIs</span>
       </div>
       <div className="flex items-center gap-2">
+        {/* Environment selector */}
+        <div className="flex items-center gap-1">
+          <select
+            value={activeEnvironmentId ?? ''}
+            onChange={(e) => setActiveEnvironment(e.target.value || null)}
+            className="px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-gray-300 focus:outline-none focus:border-violet-500 max-w-[130px]"
+            title="Ambiente ativo"
+          >
+            <option value="">Sem ambiente</option>
+            {environments.map((env) => (
+              <option key={env.id} value={env.id}>{env.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={onEnvironmentClick}
+            title="Gerenciar ambientes"
+            className={`px-2 py-1.5 text-xs rounded transition-colors ${activeEnv ? 'bg-green-900/40 text-green-400 border border-green-800' : 'bg-gray-800 hover:bg-gray-700 text-gray-400'}`}
+          >
+            {activeEnv ? '● Env' : '⊕ Env'}
+          </button>
+        </div>
+
+        <div className="w-px h-5 bg-gray-700" />
+
         {onImportClick && (
           <button
             onClick={onImportClick}

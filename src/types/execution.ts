@@ -33,6 +33,7 @@ export interface ExecutionResult {
   request: SerializedRequest;
   response?: SerializedResponse;
   validationResult: ValidationResult;
+  extractedVars?: Record<string, string>;
   error?: string;
   errorType?: 'NETWORK' | 'TIMEOUT' | 'CORS' | 'PARSE';
 }

@@ -6,8 +6,9 @@ import { PayloadEditor } from './PayloadEditor';
 import { HeadersEditor } from './HeadersEditor';
 import { ExpectedEditor } from './ExpectedEditor';
 import { ResultPanel } from './ResultPanel';
+import { ScriptsEditor } from './ScriptsEditor';
 
-type Tab = 'requisicao' | 'headers' | 'resposta' | 'resultado';
+type Tab = 'requisicao' | 'headers' | 'resposta' | 'scripts' | 'resultado';
 
 export function PropertiesPanel() {
   const [tab, setTab] = useState<Tab>('requisicao');
@@ -26,6 +27,7 @@ export function PropertiesPanel() {
     { id: 'requisicao', label: 'Requisição' },
     { id: 'headers', label: 'Headers' },
     { id: 'resposta', label: 'Esperado' },
+    { id: 'scripts', label: 'Scripts' },
     { id: 'resultado', label: 'Resultado', badge: result ? (result.validationResult.passed && !result.error ? '✓' : '✗') : undefined },
   ];
 
@@ -82,6 +84,7 @@ export function PropertiesPanel() {
         {tab === 'requisicao' && <PayloadEditor node={node} />}
         {tab === 'headers' && <HeadersEditor node={node} />}
         {tab === 'resposta' && <ExpectedEditor node={node} />}
+        {tab === 'scripts' && <ScriptsEditor node={node} />}
         {tab === 'resultado' && <ResultPanel result={result} />}
       </div>
     </div>

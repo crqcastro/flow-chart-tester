@@ -1,5 +1,6 @@
 import type { Node, Edge } from '@xyflow/react';
 import type { RouteDefinition } from './swagger';
+import type { ResponseExtractor } from './environment';
 
 export interface KeyValuePair {
   id: string;
@@ -18,6 +19,7 @@ export interface NodeConfig {
   enabled: boolean;
   baseUrlOverride?: string;
   timeoutMs: number;
+  responseExtractors: ResponseExtractor[];
 }
 
 export type ExecutionStatus = 'idle' | 'running' | 'success' | 'error' | 'skipped';
@@ -78,5 +80,6 @@ export function defaultNodeConfig(route: RouteDefinition): NodeConfig {
     queryParams,
     enabled: true,
     timeoutMs: 30000,
+    responseExtractors: [],
   };
 }

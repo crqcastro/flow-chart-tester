@@ -16,7 +16,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
     );
   }
 
-  const { request, response, validationResult, error, durationMs, requestedAt } = result;
+  const { request, response, validationResult, error, durationMs, requestedAt, extractedVars } = result;
   const passed = validationResult.passed && !error;
 
   return (
@@ -84,6 +84,21 @@ export function ResultPanel({ result }: ResultPanelProps) {
                     </>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Extracted variables */}
+      {extractedVars && Object.keys(extractedVars).length > 0 && (
+        <div>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Variáveis extraídas</p>
+          <div className="flex flex-col gap-1">
+            {Object.entries(extractedVars).map(([key, val]) => (
+              <div key={key} className="flex items-center gap-2 p-1.5 bg-violet-900/20 border border-violet-800/40 rounded text-xs">
+                <code className="text-violet-300 font-mono shrink-0">{`{{${key}}}`}</code>
+                <span className="text-gray-400 truncate">{String(val).slice(0, 80)}</span>
               </div>
             ))}
           </div>

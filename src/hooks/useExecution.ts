@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useFlowStore } from '../store/flowStore';
 import { useExecutionStore } from '../store/executionStore';
+import { useEnvironmentStore } from '../store/environmentStore';
 import { runFlow } from '../lib/executionEngine';
 
 export function useExecution() {
@@ -9,14 +10,14 @@ export function useExecution() {
   const setNodeExecutionStatus = useFlowStore((s) => s.setNodeExecutionStatus);
   const { setRunning, updateResult, clearResults, setSummary, proxyUrl } = useExecutionStore();
   const running = useExecutionStore((s) => s.running);
+  const getActiveVars = useEnvironmentStore((s) => s.getActiveVars);
+  const setVariableValue = useEnvironmentStore((s) => s.setVariableValue);
 
   const execute = useCallback(async () => {
     if (running || nodes.length === 0) return;
 
     clearResults();
     setRunning(true);
-
-    // Reset all nodes to idle
     nodes.forEach((n) => setNodeExecutionStatus(n.id, 'idle'));
 
     const startTime = Date.now();
@@ -26,6 +27,7 @@ export function useExecution() {
     try {
       await runFlow(nodes, edges, {
         proxyUrl: proxyUrl || undefined,
+        vars: getActiveVars(),
         onNodeStart: (nodeId) => {
           setNodeExecutionStatus(nodeId, 'running');
         },
@@ -35,6 +37,12 @@ export function useExecution() {
           updateResult(result);
           if (passed) successCount++;
           else failedCount++;
+        },
+        onVarsUpdated: (extracted) => {
+          // Persist extracted vars back to the active environment
+          for (const [key, value] of Object.entries(extracted)) {
+            setVariableValue(key, value);
+          }
         },
       });
     } catch (err) {
@@ -48,7 +56,8 @@ export function useExecution() {
         durationMs: Date.now() - startTime,
       });
     }
-  }, [nodes, edges, running, proxyUrl, clearResults, setRunning, setNodeExecutionStatus, updateResult, setSummary]);
+  }, [nodes, edges, running, proxyUrl, clearResults, setRunning, setNodeExecutionStatus,
+      updateResult, setSummary, getActiveVars, setVariableValue]);
 
   return { execute, running };
 }

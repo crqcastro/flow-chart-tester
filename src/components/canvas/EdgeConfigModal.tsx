@@ -1,8 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../ui/Modal';
 import { useFlowStore } from '../../store/flowStore';
 import type { DataFlowStrategy, FieldMapping } from '../../types/flow';
 import { nanoid } from '../../lib/nanoid';
+
+function extractPaths(obj: unknown, prefix = '$'): string[] {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return [prefix];
+  return Object.keys(obj as object).flatMap((k) =>
+    extractPaths((obj as Record<string, unknown>)[k], `${prefix}.${k}`)
+  );
+}
 
 interface EdgeConfigModalProps {
   edgeId: string | null;
@@ -23,10 +30,17 @@ export function EdgeConfigModal({ edgeId, onClose }: EdgeConfigModalProps) {
   const edge = edges.find((e) => e.id === edgeId);
   const [strategy, setStrategy] = useState<DataFlowStrategy>('sequential');
   const [mappings, setMappings] = useState<FieldMapping[]>([]);
+  const [showPaths, setShowPaths] = useState(false);
 
   // Source node name for context
   const sourceNode = nodes.find((n) => n.id === edge?.source);
   const targetNode = nodes.find((n) => n.id === edge?.target);
+
+  const availablePaths = useMemo(() => {
+    const json = sourceNode?.data.config.expectedJson;
+    if (!json) return [];
+    try { return extractPaths(JSON.parse(json)); } catch { return []; }
+  }, [sourceNode]);
 
   useEffect(() => {
     if (edge?.data) {
@@ -98,6 +112,36 @@ export function EdgeConfigModal({ edgeId, onClose }: EdgeConfigModalProps) {
               + Adicionar
             </button>
           </div>
+
+          {availablePaths.length > 0 && (
+            <div className="mb-3">
+              <button
+                onClick={() => setShowPaths((v) => !v)}
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                {showPaths ? '▾' : '▸'} Campos disponíveis da resposta anterior ({availablePaths.length})
+              </button>
+              {showPaths && (
+                <div className="flex flex-wrap gap-1 mt-1.5 max-h-24 overflow-y-auto p-1 bg-gray-800/50 rounded">
+                  {availablePaths.map((p) => (
+                    <button
+                      key={p}
+                      onClick={() =>
+                        setMappings((prev) => [
+                          ...prev,
+                          { id: nanoid(), sourceJsonPath: p, targetField: '', targetType: 'body' },
+                        ])
+                      }
+                      className="text-[10px] font-mono px-1.5 py-0.5 bg-gray-800 hover:bg-violet-800 text-gray-400 hover:text-white rounded transition-colors"
+                      title={`Adicionar mapeamento para ${p}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {mappings.length === 0 && (
             <p className="text-xs text-gray-600 text-center py-3">Nenhum mapeamento configurado</p>

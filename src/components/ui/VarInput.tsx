@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useEnvironmentStore } from '../../store/environmentStore';
+import { tokenize } from '../../lib/variableResolver';
 
 interface VarInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
   value: string;
@@ -30,6 +31,14 @@ export function VarInput({
   const varKeys = useMemo(() => {
     const env = environments.find((e) => e.id === activeEnvironmentId);
     return env ? env.variables.filter((v) => v.enabled && v.key).map((v) => v.key) : [];
+  }, [environments, activeEnvironmentId]);
+
+  const varMap = useMemo(() => {
+    const env = environments.find((e) => e.id === activeEnvironmentId);
+    if (!env) return {} as Record<string, string>;
+    return Object.fromEntries(
+      env.variables.filter((v) => v.enabled && v.key).map((v) => [v.key, v.value])
+    ) as Record<string, string>;
   }, [environments, activeEnvironmentId]);
 
   function recheck(val: string, cursorPos: number) {
@@ -102,6 +111,8 @@ export function VarInput({
   }
 
   const open = suggestions.length > 0 && !disabled;
+  const hasTokens = /\{\{[^}]+\}\}/.test(value);
+  const tokenSegments = hasTokens ? tokenize(value) : [];
 
   return (
     <div className="relative">
@@ -116,6 +127,26 @@ export function VarInput({
         className={className}
         {...props}
       />
+      {hasTokens && !disabled && (
+        <div className="flex flex-wrap gap-1 mt-0.5 px-1">
+          {tokenSegments.map((seg, i) => {
+            if (!seg.isVar) return null;
+            const key = seg.text.slice(2, -2).trim();
+            const resolved = varMap[key];
+            return (
+              <span
+                key={i}
+                title={resolved !== undefined ? resolved || '(vazio)' : '(sem valor)'}
+                className={`text-[10px] font-mono px-1 rounded cursor-help ${
+                  resolved !== undefined ? 'text-green-400' : 'text-red-400'
+                }`}
+              >
+                {seg.text}
+              </span>
+            );
+          })}
+        </div>
+      )}
       {open && (
         <ul className="absolute left-0 top-full mt-0.5 z-50 bg-gray-900 border border-gray-700 rounded shadow-lg max-h-40 overflow-y-auto min-w-max w-full">
           {suggestions.map((s, i) => (

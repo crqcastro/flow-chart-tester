@@ -9,9 +9,10 @@ interface TopBarProps {
   onExportXmlClick?: () => void;
   onEnvironmentClick?: () => void;
   onExecuteClick?: () => void;
+  onNewDiagramClick?: () => void;
 }
 
-export function TopBar({ onImportClick, onSettingsClick, onImportXmlClick, onExportXmlClick, onEnvironmentClick, onExecuteClick }: TopBarProps) {
+export function TopBar({ onImportClick, onSettingsClick, onImportXmlClick, onExportXmlClick, onEnvironmentClick, onExecuteClick, onNewDiagramClick }: TopBarProps) {
   const { execute, running } = useExecution();
   const nodes = useFlowStore((s) => s.nodes);
   const hasNodes = nodes.length > 0;
@@ -54,6 +55,15 @@ export function TopBar({ onImportClick, onSettingsClick, onImportXmlClick, onExp
 
         <div className="w-px h-5 bg-gray-700" />
 
+        {onNewDiagramClick && (
+          <button
+            onClick={onNewDiagramClick}
+            className="px-3 py-1.5 text-xs rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+            title="Novo diagrama em branco"
+          >
+            Novo
+          </button>
+        )}
         {onImportClick && (
           <button
             onClick={onImportClick}

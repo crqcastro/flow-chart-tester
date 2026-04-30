@@ -6,6 +6,7 @@ import {
   MiniMap,
   addEdge,
   BackgroundVariant,
+  useReactFlow,
 } from '@xyflow/react';
 import type { Connection, NodeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -29,6 +30,7 @@ export function FlowCanvas() {
   } = useFlowStore();
   const routes = useSwaggerStore((s) => s.routes);
   const [edgeModalId, setEdgeModalId] = useState<string | null>(null);
+  const { screenToFlowPosition } = useReactFlow();
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -75,11 +77,10 @@ export function FlowCanvas() {
       if (!routeId) return;
       const route = routes.find((r) => r.id === routeId);
       if (!route) return;
-      const bounds = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-      const position = { x: e.clientX - bounds.left - 112, y: e.clientY - bounds.top - 40 };
+      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       addNodeFromRoute(route, position);
     },
-    [routes, addNodeFromRoute]
+    [routes, addNodeFromRoute, screenToFlowPosition]
   );
 
   const onDragOver = useCallback((e: React.DragEvent) => {

@@ -11,6 +11,7 @@ import { Modal } from './components/ui/Modal';
 import { EnvironmentModal } from './components/environment/EnvironmentModal';
 import { ExecutionModal } from './components/execution/ExecutionModal';
 import { useFlowStore } from './store/flowStore';
+import { useSwaggerStore } from './store/swaggerStore';
 import { useXmlIO } from './hooks/useXmlIO';
 
 export default function App() {
@@ -23,6 +24,12 @@ export default function App() {
   const selectedNodeId = useFlowStore((s) => s.selectedNodeId);
   const xmlFileRef = useRef<HTMLInputElement>(null);
   const { exportXml, importXml, error: xmlError } = useXmlIO();
+
+  function handleNewDiagram() {
+    if (!window.confirm('Criar novo diagrama? O diagrama atual será perdido.')) return;
+    useFlowStore.getState().clearDiagram();
+    useSwaggerStore.getState().clearRoutes();
+  }
 
   async function handleXmlFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -37,6 +44,7 @@ export default function App() {
       <AppLayout
         topBar={
           <TopBar
+            onNewDiagramClick={handleNewDiagram}
             onImportClick={() => setImportModalOpen(true)}
             onSettingsClick={() => setSettingsOpen(true)}
             onEnvironmentClick={() => setEnvModalOpen(true)}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { parseSwagger } from '../lib/swaggerParser';
+import { parsePostmanCollection } from '../lib/postmanParser';
 import { useSwaggerStore } from '../store/swaggerStore';
 import type { SwaggerSource } from '../types/swagger';
 
@@ -10,10 +11,36 @@ interface UseSwaggerImportReturn {
   importFromFile: (file: File) => Promise<boolean>;
 }
 
+function isPostmanCollection(raw: string): boolean {
+  try {
+    const doc = JSON.parse(raw) as Record<string, unknown>;
+    const schema = (doc.info as Record<string, unknown>)?.schema as string ?? '';
+    return schema.includes('getpostman.com') || (doc.info !== undefined && Array.isArray(doc.item));
+  } catch {
+    return false;
+  }
+}
+
 export function useSwaggerImport(): UseSwaggerImportReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const setRoutes = useSwaggerStore((s) => s.setRoutes);
+  const { setRoutes, appendRoutes } = useSwaggerStore();
+
+  async function processContent(rawContent: string, source: SwaggerSource): Promise<boolean> {
+    if (isPostmanCollection(rawContent)) {
+      const routes = parsePostmanCollection(rawContent);
+      appendRoutes(routes, {
+        type: 'postman',
+        label: source.url ?? source.fileName ?? 'postman',
+        source,
+        routeIds: routes.map((r) => r.id),
+      });
+    } else {
+      const routes = parseSwagger(rawContent);
+      setRoutes(routes, source);
+    }
+    return true;
+  }
 
   async function importFromUrl(url: string): Promise<boolean> {
     setLoading(true);
@@ -22,13 +49,10 @@ export function useSwaggerImport(): UseSwaggerImportReturn {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Erro HTTP ${res.status}: ${res.statusText}`);
       const rawContent = await res.text();
-      const routes = parseSwagger(rawContent);
       const source: SwaggerSource = { type: 'url', url, rawContent };
-      setRoutes(routes, source);
-      return true;
+      return await processContent(rawContent, source);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(`Falha ao importar da URL: ${msg}`);
+      setError(`Falha ao importar da URL: ${(err as Error).message}`);
       return false;
     } finally {
       setLoading(false);
@@ -40,13 +64,10 @@ export function useSwaggerImport(): UseSwaggerImportReturn {
     setError(null);
     try {
       const rawContent = await file.text();
-      const routes = parseSwagger(rawContent);
       const source: SwaggerSource = { type: 'file', fileName: file.name, rawContent };
-      setRoutes(routes, source);
-      return true;
+      return await processContent(rawContent, source);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(`Falha ao importar arquivo: ${msg}`);
+      setError(`Falha ao importar arquivo: ${(err as Error).message}`);
       return false;
     } finally {
       setLoading(false);

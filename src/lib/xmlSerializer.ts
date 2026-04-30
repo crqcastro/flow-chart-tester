@@ -1,6 +1,6 @@
 import { XMLBuilder } from 'fast-xml-parser';
 import type { FlowNode, FlowEdge } from '../types/flow';
-import type { SwaggerSource } from '../types/swagger';
+import type { ImportedSource } from '../store/swaggerStore';
 
 const builder = new XMLBuilder({
   ignoreAttributes: false,
@@ -13,17 +13,34 @@ const builder = new XMLBuilder({
 export function serializeDiagram(
   nodes: FlowNode[],
   edges: FlowEdge[],
-  swaggerSource: SwaggerSource | null,
+  sources: ImportedSource[],
   name = 'Meu Fluxo'
 ): string {
   const now = new Date().toISOString();
 
+  // Embed each imported source as a sourceDef element
+  const sourceDefs = sources.map((s) => ({
+    '@_type': s.type,
+    '@_label': s.label,
+    '@_sourceType': s.source.type,
+    ...(s.source.url ? { '@_url': s.source.url } : {}),
+    ...(s.source.fileName ? { '@_fileName': s.source.fileName } : {}),
+    rawContent: {
+      __cdata: s.source.rawContent
+        ? btoa(unescape(encodeURIComponent(s.source.rawContent)))
+        : '',
+    },
+  }));
+
+  // Each node embeds its full RouteDefinition so the diagram is self-contained
   const xmlNodes = nodes.map((n) => ({
     '@_id': n.id,
     '@_routeId': n.data.route.id,
     '@_x': String(n.position.x),
     '@_y': String(n.position.y),
     config: { __cdata: JSON.stringify(n.data.config) },
+    // Embed the route definition for routes that don't come from a parseable source
+    routeDef: { __cdata: JSON.stringify(n.data.route) },
   }));
 
   const xmlEdges = edges.map((e) => ({
@@ -33,24 +50,15 @@ export function serializeDiagram(
     data: { __cdata: JSON.stringify(e.data ?? { strategy: 'sequential', fieldMappings: [] }) },
   }));
 
-  const swaggerSourceXml = swaggerSource
-    ? {
-        '@_type': swaggerSource.type,
-        ...(swaggerSource.url ? { '@_url': swaggerSource.url } : {}),
-        ...(swaggerSource.fileName ? { '@_fileName': swaggerSource.fileName } : {}),
-        rawContent: { __cdata: btoa(unescape(encodeURIComponent(swaggerSource.rawContent))) },
-      }
-    : { '@_type': 'none', rawContent: { __cdata: '' } };
-
   const diagram = {
     diagram: {
-      '@_version': '1.0',
+      '@_version': '1.1',
       meta: {
         '@_name': name,
         '@_createdAt': now,
         '@_updatedAt': now,
       },
-      swaggerSource: swaggerSourceXml,
+      sources: sourceDefs.length ? { source: sourceDefs } : {},
       nodes: { node: xmlNodes },
       edges: xmlEdges.length ? { edge: xmlEdges } : {},
     },

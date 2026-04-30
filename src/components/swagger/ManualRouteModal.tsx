@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { useSwaggerStore } from '../../store/swaggerStore';
 import type { HttpMethod, RouteDefinition, RouteParameter } from '../../types/swagger';
 import { nanoid } from '../../lib/nanoid';
+import type { ImportedSource } from '../../store/swaggerStore';
 
 interface ManualRouteModalProps {
   open: boolean;
@@ -28,7 +29,7 @@ export function ManualRouteModal({ open, onClose }: ManualRouteModalProps) {
   const [params, setParams] = useState<ParamRow[]>([]);
   const [error, setError] = useState('');
 
-  const { routes, source, setRoutes } = useSwaggerStore();
+  const { routes, appendRoutes } = useSwaggerStore();
 
   function reset() {
     setMethod('GET');
@@ -91,10 +92,13 @@ export function ManualRouteModal({ open, onClose }: ManualRouteModalProps) {
       baseUrl: baseUrl.replace(/\/$/, ''),
     };
 
-    setRoutes(
-      [...routes, route],
-      source ?? { type: 'file', fileName: 'manual', rawContent: '' }
-    );
+    const manualSource: ImportedSource = {
+      type: 'manual',
+      label: 'manual',
+      source: { type: 'file', fileName: 'manual', rawContent: '' },
+      routeIds: [route.id],
+    };
+    appendRoutes([route], manualSource);
 
     reset();
     onClose();

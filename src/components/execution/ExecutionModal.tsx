@@ -128,7 +128,8 @@ interface NodeRowProps {
 function NodeRow({ node, result, pending = false }: NodeRowProps) {
   const { route, config, executionStatus } = node.data;
   const displayMethod = config.methodOverride ?? route.method;
-  const displayPath = config.pathOverride ?? route.path;
+  // Show resolved URL from result when available, fall back to template path
+  const displayUrl = result?.request.url ?? (config.pathOverride ?? route.path);
 
   const status: ExecutionStatus | 'pending' = pending ? 'pending' : executionStatus;
   const hasDetails = !!result;
@@ -150,8 +151,8 @@ function NodeRow({ node, result, pending = false }: NodeRowProps) {
       >
         <StatusIcon status={status} />
         <Badge method={displayMethod} />
-        <span className="flex-1 text-xs font-mono text-gray-200 truncate" title={displayPath}>
-          {displayPath}
+        <span className="flex-1 text-xs font-mono text-gray-200 truncate" title={displayUrl}>
+          {displayUrl}
         </span>
         {result?.response && <HttpStatusBadge code={result.response.status} />}
         {result && (

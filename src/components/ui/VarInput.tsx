@@ -130,15 +130,18 @@ export function VarInput({
             if (!seg.isVar) return null;
             const key = seg.text.slice(2, -2).trim();
             const resolved = varMap[key];
+            const tooltipText = resolved !== undefined ? (resolved || '(vazio)') : '(sem valor)';
             return (
               <span
                 key={i}
-                title={resolved !== undefined ? resolved || '(vazio)' : '(sem valor)'}
-                className={`text-[10px] font-mono px-1 rounded cursor-help ${
+                className={`relative group text-[10px] font-mono px-1 rounded cursor-help ${
                   resolved !== undefined ? 'text-green-400' : 'text-red-400'
                 }`}
               >
                 {seg.text}
+                <span className="pointer-events-none absolute bottom-full left-0 mb-1 hidden group-hover:block bg-gray-800 border border-gray-600 text-gray-100 text-[10px] font-mono px-2 py-1 rounded shadow-xl whitespace-nowrap z-[100]">
+                  {tooltipText}
+                </span>
               </span>
             );
           })}

@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import type { Plugin } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import http from 'node:http';
+import https from 'node:https';
 
 /** Local CORS proxy — intercepts GET/POST/... to /proxy/<encoded-target-url>
  *  and forwards the request server-side, bypassing browser CORS restrictions.
@@ -10,73 +12,80 @@ function corsProxyPlugin(): Plugin {
   return {
     name: 'cors-proxy',
     configureServer(server) {
-      server.middlewares.use('/proxy', async (req: IncomingMessage, res: ServerResponse) => {
-        // Handle preflight
+      server.middlewares.use('/proxy', (req: IncomingMessage, res: ServerResponse) => {
+        const corsHeaders = {
+          'access-control-allow-origin': '*',
+          'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS',
+          'access-control-allow-headers': '*',
+          'access-control-max-age': '86400',
+        };
+
         if (req.method === 'OPTIONS') {
-          res.writeHead(204, {
-            'access-control-allow-origin': '*',
-            'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS',
-            'access-control-allow-headers': '*',
-            'access-control-max-age': '86400',
-          });
+          res.writeHead(204, corsHeaders);
           res.end();
           return;
         }
 
+        // req.url has the '/proxy' prefix stripped by Connect
         const encodedUrl = req.url?.slice(1); // strip leading '/'
         if (!encodedUrl) {
-          res.writeHead(400); res.end('Missing target URL'); return;
+          res.writeHead(400, corsHeaders); res.end('Missing target URL'); return;
         }
 
-        let targetUrl: string;
+        let targetUrl: URL;
         try {
-          targetUrl = decodeURIComponent(encodedUrl);
-          new URL(targetUrl); // validate
+          targetUrl = new URL(decodeURIComponent(encodedUrl));
         } catch {
-          res.writeHead(400); res.end('Invalid target URL'); return;
+          res.writeHead(400, corsHeaders); res.end('Invalid target URL'); return;
         }
 
-        // Collect request body
-        const chunks: Buffer[] = [];
-        req.on('data', (chunk: Buffer) => chunks.push(chunk));
-        await new Promise<void>((resolve) => req.on('end', resolve));
-        const bodyBuf = chunks.length ? Buffer.concat(chunks) : undefined;
+        const isHttps = targetUrl.protocol === 'https:';
+        const transport = isHttps ? https : http;
+        const port = targetUrl.port
+          ? parseInt(targetUrl.port)
+          : isHttps ? 443 : 80;
 
-        // Forward headers, skip hop-by-hop
         const skipHeaders = new Set([
           'host', 'connection', 'transfer-encoding', 'upgrade',
           'proxy-connection', 'keep-alive',
         ]);
-        const forwardHeaders: Record<string, string> = {};
+
+        const forwardHeaders: Record<string, string> = {
+          host: targetUrl.host,
+        };
         for (const [k, v] of Object.entries(req.headers)) {
           if (!skipHeaders.has(k.toLowerCase()) && typeof v === 'string') {
             forwardHeaders[k] = v;
           }
         }
 
-        try {
-          const upstream = await fetch(targetUrl, {
-            method: req.method,
-            headers: forwardHeaders,
-            body: bodyBuf?.length ? bodyBuf : undefined,
-              duplex: 'half',
-          });
+        const options = {
+          hostname: targetUrl.hostname,
+          port,
+          path: targetUrl.pathname + targetUrl.search,
+          method: req.method,
+          headers: forwardHeaders,
+        };
 
-          const responseBody = Buffer.from(await upstream.arrayBuffer());
+        const proxyReq = transport.request(options, (proxyRes) => {
+          const responseHeaders: Record<string, string | string[]> = { ...corsHeaders };
+          for (const [k, v] of Object.entries(proxyRes.headers)) {
+            if (!skipHeaders.has(k.toLowerCase()) && v !== undefined) {
+              responseHeaders[k] = v as string | string[];
+            }
+          }
+          res.writeHead(proxyRes.statusCode ?? 200, responseHeaders);
+          proxyRes.pipe(res);
+        });
 
-          const responseHeaders: Record<string, string> = {
-            'access-control-allow-origin': '*',
-          };
-          upstream.headers.forEach((val, key) => {
-            if (!skipHeaders.has(key)) responseHeaders[key] = val;
-          });
+        proxyReq.on('error', (err) => {
+          if (!res.headersSent) {
+            res.writeHead(502, corsHeaders);
+          }
+          res.end(`Proxy error: ${err.message}`);
+        });
 
-          res.writeHead(upstream.status, responseHeaders);
-          res.end(responseBody);
-        } catch (err) {
-          res.writeHead(502);
-          res.end(`Proxy error: ${(err as Error).message}`);
-        }
+        req.pipe(proxyReq);
       });
     },
   };

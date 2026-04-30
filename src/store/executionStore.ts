@@ -19,7 +19,7 @@ interface ExecutionState {
 
 const DEFAULT_DEV_PROXY = import.meta.env.DEV ? 'http://localhost:5173/proxy' : '';
 const savedProxy = typeof localStorage !== 'undefined'
-  ? (localStorage.getItem('flowchart_proxy') ?? DEFAULT_DEV_PROXY)
+  ? (localStorage.getItem('flowchart_proxy') || DEFAULT_DEV_PROXY)
   : DEFAULT_DEV_PROXY;
 
 export const useExecutionStore = create<ExecutionState>((set) => ({

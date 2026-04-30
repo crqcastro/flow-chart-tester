@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSwaggerStore } from '../../store/swaggerStore';
 import { Badge } from '../ui/Badge';
+import { ManualRouteModal } from './ManualRouteModal';
 import type { RouteDefinition } from '../../types/swagger';
 
 interface RouteListProps {
@@ -12,21 +13,31 @@ export function RouteList({ onImportClick }: RouteListProps) {
   const source = useSwaggerStore((s) => s.source);
   const [search, setSearch] = useState('');
   const [collapsedTags, setCollapsedTags] = useState<Set<string>>(new Set());
+  const [manualModalOpen, setManualModalOpen] = useState(false);
 
   if (!routes.length) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 gap-3 p-4 text-center">
-        <svg className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-        </svg>
-        <p className="text-sm text-gray-500">Importe um Swagger<br />para ver as rotas</p>
-        <button
-          className="mt-2 px-3 py-1.5 text-xs rounded bg-violet-600 hover:bg-violet-500 text-white transition-colors"
-          onClick={onImportClick}
-        >
-          Importar Swagger
-        </button>
-      </div>
+      <>
+        <div className="flex flex-col items-center justify-center flex-1 gap-3 p-4 text-center">
+          <svg className="w-10 h-10 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+          </svg>
+          <p className="text-sm text-gray-500">Importe um Swagger<br />para ver as rotas</p>
+          <button
+            className="mt-2 px-3 py-1.5 text-xs rounded bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+            onClick={onImportClick}
+          >
+            Importar Swagger
+          </button>
+          <button
+            className="px-3 py-1.5 text-xs rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+            onClick={() => setManualModalOpen(true)}
+          >
+            + Rota manual
+          </button>
+        </div>
+        <ManualRouteModal open={manualModalOpen} onClose={() => setManualModalOpen(false)} />
+      </>
     );
   }
 
@@ -62,17 +73,27 @@ export function RouteList({ onImportClick }: RouteListProps) {
   }
 
   return (
+    <>
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-3 pt-3 pb-2 border-b border-gray-800">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Rotas</span>
-          <button
-            onClick={onImportClick}
-            className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
-          >
-            Reimportar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setManualModalOpen(true)}
+              className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+              title="Adicionar rota manualmente"
+            >
+              + Manual
+            </button>
+            <button
+              onClick={onImportClick}
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Reimportar
+            </button>
+          </div>
         </div>
         {source && (
           <p className="text-xs text-gray-600 truncate mb-2" title={source.url ?? source.fileName}>
@@ -124,5 +145,7 @@ export function RouteList({ onImportClick }: RouteListProps) {
         )}
       </div>
     </div>
+    <ManualRouteModal open={manualModalOpen} onClose={() => setManualModalOpen(false)} />
+    </>
   );
 }

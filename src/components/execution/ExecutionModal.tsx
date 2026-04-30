@@ -128,8 +128,16 @@ interface NodeRowProps {
 function NodeRow({ node, result, pending = false }: NodeRowProps) {
   const { route, config, executionStatus } = node.data;
   const displayMethod = config.methodOverride ?? route.method;
-  // Show resolved URL from result when available, fall back to template path
-  const displayUrl = result?.request.url ?? (config.pathOverride ?? route.path);
+  // Show resolved path only (no protocol/host) — full URL visible in expanded details
+  let displayUrl = config.pathOverride ?? route.path;
+  if (result?.request.url) {
+    try {
+      const u = new URL(result.request.url);
+      displayUrl = u.pathname + u.search;
+    } catch {
+      displayUrl = result.request.url;
+    }
+  }
 
   const status: ExecutionStatus | 'pending' = pending ? 'pending' : executionStatus;
   const hasDetails = !!result;

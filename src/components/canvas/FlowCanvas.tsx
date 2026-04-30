@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -12,10 +12,10 @@ import '@xyflow/react/dist/style.css';
 import { useFlowStore } from '../../store/flowStore';
 import { useSwaggerStore } from '../../store/swaggerStore';
 import { RouteNode } from './RouteNode';
+import { EdgeConfigModal } from './EdgeConfigModal';
 import type { EdgeData, FlowEdge } from '../../types/flow';
 import { nanoid } from '../../lib/nanoid';
 
-// Cast needed because @xyflow/react NodeTypes is strict about generics
 const NODE_TYPES: NodeTypes = { route: RouteNode as NodeTypes[string] };
 
 export function FlowCanvas() {
@@ -28,6 +28,7 @@ export function FlowCanvas() {
     selectedNodeId,
   } = useFlowStore();
   const routes = useSwaggerStore((s) => s.routes);
+  const [edgeModalId, setEdgeModalId] = useState<string | null>(null);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -49,15 +50,10 @@ export function FlowCanvas() {
       e.preventDefault();
       const routeId = e.dataTransfer.getData('application/flowchart-route');
       if (!routeId) return;
-
       const route = routes.find((r) => r.id === routeId);
       if (!route) return;
-
       const bounds = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-      const position = {
-        x: e.clientX - bounds.left - 112,
-        y: e.clientY - bounds.top - 40,
-      };
+      const position = { x: e.clientX - bounds.left - 112, y: e.clientY - bounds.top - 40 };
       addNodeFromRoute(route, position);
     },
     [routes, addNodeFromRoute]
@@ -68,17 +64,38 @@ export function FlowCanvas() {
     e.dataTransfer.dropEffect = 'copy';
   }, []);
 
+  // Edge label shows strategy type
+  const edgesWithLabels = edges.map((e) => {
+    const strategy = e.data?.strategy ?? 'sequential';
+    const labelMap: Record<string, string> = {
+      'sequential': '',
+      'full-response': '→ full',
+      'map-fields': '→ map',
+    };
+    return {
+      ...e,
+      label: labelMap[strategy] || '',
+      labelStyle: { fill: '#9ca3af', fontSize: 10 },
+      style: {
+        stroke: strategy === 'sequential' ? '#6b7280' : '#8b5cf6',
+        strokeWidth: 2,
+        ...(e.style ?? {}),
+      },
+    };
+  });
+
   return (
     <div className="w-full h-full relative" onDrop={onDrop} onDragOver={onDragOver}>
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={edgesWithLabels}
         nodeTypes={NODE_TYPES}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={(_, node) => setSelectedNode(node.id)}
         onEdgeClick={(_, edge) => setSelectedEdge(edge.id)}
+        onEdgeDoubleClick={(_, edge) => setEdgeModalId(edge.id)}
         onPaneClick={() => { setSelectedNode(null); setSelectedEdge(null); }}
         fitView
         colorMode="dark"
@@ -114,9 +131,12 @@ export function FlowCanvas() {
       {/* Selection hint */}
       {selectedNodeId && (
         <div className="absolute top-3 right-3 text-xs text-gray-500 bg-gray-900/80 px-2 py-1 rounded pointer-events-none">
-          Clique no bloco para editar · <kbd className="px-1 bg-gray-800 rounded">Delete</kbd> para remover
+          Clique para editar · <kbd className="px-1 bg-gray-800 rounded">Delete</kbd> para remover
         </div>
       )}
+
+      {/* Edge config modal */}
+      <EdgeConfigModal edgeId={edgeModalId} onClose={() => setEdgeModalId(null)} />
     </div>
   );
 }

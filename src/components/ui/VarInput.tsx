@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useEnvironmentStore } from '../../store/environmentStore';
 
 interface VarInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
@@ -22,10 +23,14 @@ export function VarInput({
   const [matchStart, setMatchStart] = useState(-1);
   const [filterLen, setFilterLen] = useState(0);
 
-  const varKeys = useEnvironmentStore((s) => {
-    const env = s.environments.find((e) => e.id === s.activeEnvironmentId);
+  const { environments, activeEnvironmentId } = useEnvironmentStore(
+    useShallow((s) => ({ environments: s.environments, activeEnvironmentId: s.activeEnvironmentId }))
+  );
+
+  const varKeys = useMemo(() => {
+    const env = environments.find((e) => e.id === activeEnvironmentId);
     return env ? env.variables.filter((v) => v.enabled && v.key).map((v) => v.key) : [];
-  });
+  }, [environments, activeEnvironmentId]);
 
   function recheck(val: string, cursorPos: number) {
     const before = val.slice(0, cursorPos);

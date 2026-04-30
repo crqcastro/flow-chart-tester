@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { RouteDefinition, SwaggerSource } from '../types/swagger';
 
 export interface ImportedSource {
@@ -20,7 +21,9 @@ interface SwaggerState {
   clearRoutes: () => void;
 }
 
-export const useSwaggerStore = create<SwaggerState>((set, get) => ({
+export const useSwaggerStore = create<SwaggerState>()(
+  persist(
+    (set, get) => ({
   routes: [],
   sources: [],
   source: null,
@@ -58,4 +61,10 @@ export const useSwaggerStore = create<SwaggerState>((set, get) => ({
   },
 
   clearRoutes: () => set({ routes: [], sources: [], source: null }),
-}));
+    }),
+    {
+      name: 'flowchart-routes',
+      partialize: (s) => ({ routes: s.routes, sources: s.sources, source: s.source }),
+    }
+  )
+);

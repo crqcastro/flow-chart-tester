@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { NodeChange, EdgeChange } from '@xyflow/react';
 import type { FlowNode, FlowEdge, NodeConfig, EdgeData } from '../types/flow';
@@ -29,7 +30,9 @@ interface FlowState {
   setDiagram: (nodes: FlowNode[], edges: FlowEdge[]) => void;
 }
 
-export const useFlowStore = create<FlowState>((set) => ({
+export const useFlowStore = create<FlowState>()(
+  persist(
+    (set) => ({
   nodes: [],
   edges: [],
   selectedNodeId: null,
@@ -87,4 +90,17 @@ export const useFlowStore = create<FlowState>((set) => ({
 
   clearDiagram: () => set({ nodes: [], edges: [], selectedNodeId: null, selectedEdgeId: null }),
   setDiagram: (nodes, edges) => set({ nodes, edges, selectedNodeId: null, selectedEdgeId: null }),
-}));
+    }),
+    {
+      name: 'flowchart-diagram',
+      partialize: (s) => ({
+        edges: s.edges,
+        // Reset execution status so restored nodes always start idle
+        nodes: s.nodes.map((n) => ({
+          ...n,
+          data: { ...n.data, executionStatus: 'idle' as const },
+        })),
+      }),
+    }
+  )
+);

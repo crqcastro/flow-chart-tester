@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -25,10 +25,33 @@ export function FlowCanvas() {
     addNodeFromRoute,
     addEdge: storeAddEdge,
     setSelectedNode, setSelectedEdge,
-    selectedNodeId,
+    selectedNodeId, selectedEdgeId,
   } = useFlowStore();
   const routes = useSwaggerStore((s) => s.routes);
   const [edgeModalId, setEdgeModalId] = useState<string | null>(null);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setSelectedNode(null);
+        setSelectedEdge(null);
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedNodeId || selectedEdgeId)) {
+        // React Flow handles node/edge deletion via onNodesChange/onEdgesChange with 'remove' type
+        if (selectedNodeId) {
+          onNodesChange([{ type: 'remove', id: selectedNodeId }]);
+          setSelectedNode(null);
+        }
+        if (selectedEdgeId) {
+          onEdgesChange([{ type: 'remove', id: selectedEdgeId }]);
+          setSelectedEdge(null);
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedNodeId, selectedEdgeId, onNodesChange, onEdgesChange, setSelectedNode, setSelectedEdge]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -64,7 +87,6 @@ export function FlowCanvas() {
     e.dataTransfer.dropEffect = 'copy';
   }, []);
 
-  // Edge label shows strategy type
   const edgesWithLabels = edges.map((e) => {
     const strategy = e.data?.strategy ?? 'sequential';
     const labelMap: Record<string, string> = {
@@ -78,8 +100,7 @@ export function FlowCanvas() {
       labelStyle: { fill: '#9ca3af', fontSize: 10 },
       style: {
         stroke: strategy === 'sequential' ? '#6b7280' : '#8b5cf6',
-        strokeWidth: 2,
-        ...(e.style ?? {}),
+        strokeWidth: selectedEdgeId === e.id ? 3 : 2,
       },
     };
   });
@@ -103,6 +124,7 @@ export function FlowCanvas() {
           style: { stroke: '#6b7280', strokeWidth: 2 },
           markerEnd: { type: 'arrowclosed' as const },
         }}
+        deleteKeyCode={null} // We handle delete manually
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
         <Controls className="!bg-gray-800 !border-gray-700" />
@@ -118,20 +140,22 @@ export function FlowCanvas() {
         />
       </ReactFlow>
 
-      {/* Empty state overlay */}
+      {/* Empty state */}
       {nodes.length === 0 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <svg className="w-12 h-12 text-gray-800 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z" />
           </svg>
           <p className="text-sm text-gray-600">Arraste rotas da sidebar para começar</p>
+          <p className="text-xs text-gray-700 mt-1">Conecte blocos para encadear chamadas</p>
         </div>
       )}
 
-      {/* Selection hint */}
-      {selectedNodeId && (
+      {/* Keyboard hints */}
+      {(selectedNodeId || selectedEdgeId) && (
         <div className="absolute top-3 right-3 text-xs text-gray-500 bg-gray-900/80 px-2 py-1 rounded pointer-events-none">
-          Clique para editar · <kbd className="px-1 bg-gray-800 rounded">Delete</kbd> para remover
+          <kbd className="px-1 bg-gray-800 rounded">Esc</kbd> desselecionar ·{' '}
+          <kbd className="px-1 bg-gray-800 rounded">Del</kbd> remover
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
@@ -19,7 +20,7 @@ import { nanoid } from '../../lib/nanoid';
 
 const NODE_TYPES: NodeTypes = { route: RouteNode as NodeTypes[string] };
 
-export function FlowCanvas() {
+function FlowCanvasInner() {
   const {
     nodes, edges,
     onNodesChange, onEdgesChange,
@@ -40,7 +41,6 @@ export function FlowCanvas() {
         setSelectedEdge(null);
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedNodeId || selectedEdgeId)) {
-        // React Flow handles node/edge deletion via onNodesChange/onEdgesChange with 'remove' type
         if (selectedNodeId) {
           onNodesChange([{ type: 'remove', id: selectedNodeId }]);
           setSelectedNode(null);
@@ -125,7 +125,7 @@ export function FlowCanvas() {
           style: { stroke: '#6b7280', strokeWidth: 2 },
           markerEnd: { type: 'arrowclosed' as const },
         }}
-        deleteKeyCode={null} // We handle delete manually
+        deleteKeyCode={null}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
         <Controls className="!bg-gray-800 !border-gray-700" />
@@ -163,5 +163,13 @@ export function FlowCanvas() {
       {/* Edge config modal */}
       <EdgeConfigModal edgeId={edgeModalId} onClose={() => setEdgeModalId(null)} />
     </div>
+  );
+}
+
+export function FlowCanvas() {
+  return (
+    <ReactFlowProvider>
+      <FlowCanvasInner />
+    </ReactFlowProvider>
   );
 }

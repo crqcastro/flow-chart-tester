@@ -46,14 +46,21 @@ function topoSort(nodes: FlowNode[], edges: FlowEdge[]): FlowNode[] {
   return sorted;
 }
 
-/** Apply {{variable}} substitution to every user-editable string in the config */
-function resolveConfigVars(config: NodeConfig, vars: Record<string, string>): NodeConfig {
+/** Apply {{variable}} substitution to every user-editable string in the config.
+ *  The route is required so we can resolve variables embedded in the original
+ *  baseUrl / path even when the user hasn't set an explicit override. */
+function resolveConfigVars(
+  config: NodeConfig,
+  vars: Record<string, string>,
+  route: FlowNode['data']['route']
+): NodeConfig {
   if (Object.keys(vars).length === 0) return config;
   const r = (s: string) => resolveVariables(s, vars);
+  // Always resolve the effective base URL and path (override takes priority over route value)
   return {
     ...config,
-    baseUrlOverride: config.baseUrlOverride ? r(config.baseUrlOverride) : undefined,
-    pathOverride: config.pathOverride ? r(config.pathOverride) : undefined,
+    baseUrlOverride: r(config.baseUrlOverride ?? route.baseUrl) || undefined,
+    pathOverride: r(config.pathOverride ?? route.path) || undefined,
     payloadJson: r(config.payloadJson),
     headers: config.headers.map((h) => ({ ...h, key: r(h.key), value: r(h.value) })),
     pathParams: config.pathParams.map((p) => ({ ...p, value: r(p.value) })),
@@ -267,8 +274,8 @@ export async function runFlow(
       }
     }
 
-    // Resolve {{variables}} with current live vars
-    effectiveConfig = resolveConfigVars(effectiveConfig, liveVars);
+    // Resolve {{variables}} with current live vars (including route baseUrl/path fallbacks)
+    effectiveConfig = resolveConfigVars(effectiveConfig, liveVars, node.data.route);
 
     onNodeStart?.(node.id);
     const result = await executeNode(node, effectiveConfig, proxyUrl);

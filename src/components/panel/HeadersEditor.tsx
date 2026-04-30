@@ -1,6 +1,7 @@
 import { useFlowStore } from '../../store/flowStore';
 import type { FlowNode, KeyValuePair } from '../../types/flow';
 import { nanoid } from '../../lib/nanoid';
+import { VarInput } from '../ui/VarInput';
 
 interface HeadersEditorProps {
   node: FlowNode;
@@ -48,18 +49,16 @@ export function HeadersEditor({ node }: HeadersEditorProps) {
             onChange={(e) => setField(header.id, 'enabled', e.target.checked)}
             className="w-4 shrink-0 accent-violet-500"
           />
-          <input
-            type="text"
+          <VarInput
             value={header.key}
-            onChange={(e) => setField(header.id, 'key', e.target.value)}
+            onChange={(v) => setField(header.id, 'key', v)}
             placeholder="Content-Type"
             disabled={!header.enabled}
             className="flex-1 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded text-white disabled:opacity-40 focus:outline-none focus:border-violet-500 font-mono"
           />
-          <input
-            type="text"
+          <VarInput
             value={header.value}
-            onChange={(e) => setField(header.id, 'value', e.target.value)}
+            onChange={(v) => setField(header.id, 'value', v)}
             placeholder="application/json"
             disabled={!header.enabled}
             className="flex-1 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded text-white disabled:opacity-40 focus:outline-none focus:border-violet-500"

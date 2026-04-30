@@ -4,6 +4,7 @@ import { useSwaggerStore } from '../../store/swaggerStore';
 import type { HttpMethod, RouteDefinition, RouteParameter } from '../../types/swagger';
 import { nanoid } from '../../lib/nanoid';
 import type { ImportedSource } from '../../store/swaggerStore';
+import { VarInput } from '../ui/VarInput';
 
 interface ManualRouteModalProps {
   open: boolean;
@@ -133,10 +134,9 @@ export function ManualRouteModal({ open, onClose }: ManualRouteModalProps) {
           </div>
           <div className="flex-1">
             <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Path</label>
-            <input
-              type="text"
+            <VarInput
               value={path}
-              onChange={(e) => setPath(e.target.value)}
+              onChange={setPath}
               placeholder="/users/{id}"
               className="w-full px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white font-mono placeholder-gray-600 focus:outline-none focus:border-violet-500"
             />
@@ -146,10 +146,9 @@ export function ManualRouteModal({ open, onClose }: ManualRouteModalProps) {
         {/* Base URL */}
         <div>
           <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">URL Base</label>
-          <input
-            type="text"
+          <VarInput
             value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
+            onChange={setBaseUrl}
             placeholder="https://api.exemplo.com"
             className="w-full px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white font-mono placeholder-gray-600 focus:outline-none focus:border-violet-500"
           />

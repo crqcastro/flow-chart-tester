@@ -1,5 +1,6 @@
 import { useFlowStore } from '../../store/flowStore';
 import { JsonEditor } from '../ui/JsonEditor';
+import { VarInput } from '../ui/VarInput';
 import type { FlowNode } from '../../types/flow';
 
 interface PayloadEditorProps {
@@ -21,10 +22,9 @@ export function PayloadEditor({ node }: PayloadEditorProps) {
       {/* Base URL override */}
       <div>
         <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">URL Base</label>
-        <input
-          type="text"
+        <VarInput
           value={config.baseUrlOverride ?? route.baseUrl}
-          onChange={(e) => updateNodeConfig(node.id, { baseUrlOverride: e.target.value || undefined })}
+          onChange={(v) => updateNodeConfig(node.id, { baseUrlOverride: v || undefined })}
           className="w-full px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 font-mono"
           placeholder={route.baseUrl}
         />
@@ -39,12 +39,11 @@ export function PayloadEditor({ node }: PayloadEditorProps) {
             {config.pathParams.map((param, idx) => (
               <div key={param.id} className="flex items-center gap-1">
                 <span className="text-xs text-gray-400 font-mono w-24 shrink-0 truncate">{param.key}</span>
-                <input
-                  type="text"
+                <VarInput
                   value={param.value}
-                  onChange={(e) => {
+                  onChange={(v) => {
                     const next = [...config.pathParams];
-                    next[idx] = { ...param, value: e.target.value };
+                    next[idx] = { ...param, value: v };
                     updateNodeConfig(node.id, { pathParams: next });
                   }}
                   className="flex-1 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:border-violet-500"
@@ -74,12 +73,11 @@ export function PayloadEditor({ node }: PayloadEditorProps) {
                   className="shrink-0 accent-violet-500"
                 />
                 <span className="text-xs text-gray-400 font-mono w-20 shrink-0 truncate">{param.key}</span>
-                <input
-                  type="text"
+                <VarInput
                   value={param.value}
-                  onChange={(e) => {
+                  onChange={(v) => {
                     const next = [...config.queryParams];
-                    next[idx] = { ...param, value: e.target.value };
+                    next[idx] = { ...param, value: v };
                     updateNodeConfig(node.id, { queryParams: next });
                   }}
                   disabled={!param.enabled}

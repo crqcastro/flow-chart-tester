@@ -20,7 +20,7 @@ export function SwaggerImportModal({ open, onClose }: SwaggerImportModalProps) {
   const envFileRef = useRef<HTMLInputElement>(null);
   const { loading, error, importFromUrl, importFromFile } = useSwaggerImport();
   const { sources, removeSource } = useSwaggerStore();
-  const { environments, addEnvironment, updateVariable, addVariable } = useEnvironmentStore();
+  const { importEnvironment } = useEnvironmentStore();
 
   async function handleUrlImport() {
     if (!url.trim()) return;
@@ -38,36 +38,8 @@ export function SwaggerImportModal({ open, onClose }: SwaggerImportModalProps) {
     try {
       const raw = await file.text();
       const parsed = parsePostmanEnvironment(raw);
-
-      // Check if environment with same name exists → merge variables
-      const existing = environments.find((e) => e.name === parsed.name);
-      if (existing) {
-        for (const v of parsed.variables) {
-          const existingVar = existing.variables.find((ev) => ev.key === v.key);
-          if (existingVar) {
-            updateVariable(existing.id, existingVar.id, { value: v.value });
-          } else {
-            addVariable(existing.id);
-            // The variable is added as empty row; update it by key
-            const store = (await import('../../store/environmentStore')).useEnvironmentStore.getState();
-            const env = store.environments.find((e) => e.id === existing.id);
-            const newVar = env?.variables[env.variables.length - 1];
-            if (newVar) store.updateVariable(existing.id, newVar.id, { key: v.key, value: v.value, enabled: v.enabled });
-          }
-        }
-        setEnvSuccess(`Ambiente "${parsed.name}" atualizado com ${parsed.variables.length} variáveis.`);
-      } else {
-        // Create new environment with all variables at once
-        const id = addEnvironment(parsed.name);
-        const store = useEnvironmentStore.getState();
-        for (const v of parsed.variables) {
-          store.addVariable(id);
-          const env = store.environments.find((e) => e.id === id);
-          const newVar = env?.variables[env.variables.length - 1];
-          if (newVar) store.updateVariable(id, newVar.id, { key: v.key, value: v.value, enabled: v.enabled });
-        }
-        setEnvSuccess(`Ambiente "${parsed.name}" importado com ${parsed.variables.length} variáveis.`);
-      }
+      importEnvironment(parsed);
+      setEnvSuccess(`Ambiente "${parsed.name}" importado com ${parsed.variables.length} variáveis.`);
     } catch (e) {
       setEnvError((e as Error).message);
     }

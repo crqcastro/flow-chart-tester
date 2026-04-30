@@ -13,6 +13,9 @@ interface EnvironmentState {
   duplicateEnvironment: (id: string) => void;
   setActiveEnvironment: (id: string | null) => void;
 
+  /** Atomically create or merge an environment (used by Postman import). */
+  importEnvironment: (env: Environment) => void;
+
   addVariable: (envId: string) => void;
   updateVariable: (envId: string, varId: string, patch: Partial<EnvironmentVariable>) => void;
   deleteVariable: (envId: string, varId: string) => void;
@@ -65,6 +68,39 @@ export const useEnvironmentStore = create<EnvironmentState>()(
           ],
         }));
       },
+
+      importEnvironment: (incoming) =>
+        set((s) => {
+          const existing = s.environments.find((e) => e.name === incoming.name);
+          if (existing) {
+            // Merge: update known keys, append new ones
+            const merged = [...existing.variables];
+            for (const v of incoming.variables) {
+              const idx = merged.findIndex((ev) => ev.key === v.key);
+              if (idx >= 0) {
+                merged[idx] = { ...merged[idx], value: v.value, enabled: v.enabled };
+              } else {
+                merged.push({ ...v, id: nanoid() });
+              }
+            }
+            return {
+              environments: s.environments.map((e) =>
+                e.id === existing.id ? { ...e, variables: merged } : e
+              ),
+            };
+          }
+          // Create new with fresh IDs
+          return {
+            environments: [
+              ...s.environments,
+              {
+                id: nanoid(),
+                name: incoming.name,
+                variables: incoming.variables.map((v) => ({ ...v, id: nanoid() })),
+              },
+            ],
+          };
+        }),
 
       setActiveEnvironment: (id) => set({ activeEnvironmentId: id }),
 

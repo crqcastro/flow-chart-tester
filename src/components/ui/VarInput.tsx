@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useEnvironmentStore } from '../../store/environmentStore';
 import { tokenize } from '../../lib/variableResolver';
@@ -24,22 +24,19 @@ export function VarInput({
   const [matchStart, setMatchStart] = useState(-1);
   const [filterLen, setFilterLen] = useState(0);
 
-  const { environments, activeEnvironmentId } = useEnvironmentStore(
-    useShallow((s) => ({ environments: s.environments, activeEnvironmentId: s.activeEnvironmentId }))
+  // Compute varMap directly in the selector so useShallow compares final key-value pairs,
+  // re-rendering only when actual variable values change.
+  const varMap = useEnvironmentStore(
+    useShallow((s): Record<string, string> => {
+      const env = s.environments.find((e) => e.id === s.activeEnvironmentId);
+      if (!env) return {};
+      return Object.fromEntries(
+        env.variables.filter((v) => v.enabled && v.key).map((v) => [v.key, v.value])
+      );
+    })
   );
 
-  const varKeys = useMemo(() => {
-    const env = environments.find((e) => e.id === activeEnvironmentId);
-    return env ? env.variables.filter((v) => v.enabled && v.key).map((v) => v.key) : [];
-  }, [environments, activeEnvironmentId]);
-
-  const varMap = useMemo(() => {
-    const env = environments.find((e) => e.id === activeEnvironmentId);
-    if (!env) return {} as Record<string, string>;
-    return Object.fromEntries(
-      env.variables.filter((v) => v.enabled && v.key).map((v) => [v.key, v.value])
-    ) as Record<string, string>;
-  }, [environments, activeEnvironmentId]);
+  const varKeys = Object.keys(varMap);
 
   function recheck(val: string, cursorPos: number) {
     const before = val.slice(0, cursorPos);

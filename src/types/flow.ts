@@ -1,5 +1,5 @@
 import type { Node, Edge } from '@xyflow/react';
-import type { RouteDefinition } from './swagger';
+import type { RouteDefinition, HttpMethod } from './swagger';
 import type { ResponseExtractor } from './environment';
 
 export interface KeyValuePair {
@@ -18,6 +18,8 @@ export interface NodeConfig {
   queryParams: KeyValuePair[];
   enabled: boolean;
   baseUrlOverride?: string;
+  methodOverride?: HttpMethod;
+  pathOverride?: string;
   timeoutMs: number;
   responseExtractors: ResponseExtractor[];
 }

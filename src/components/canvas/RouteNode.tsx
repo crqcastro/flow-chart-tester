@@ -21,9 +21,13 @@ const STATUS_DOT: Record<ExecutionStatus, string> = {
 };
 
 export const RouteNode = memo(function RouteNode({ data, selected }: NodeProps<FlowNode>) {
-  const { route, executionStatus } = data;
+  const { route, config, executionStatus } = data;
   const ringClass = STATUS_RING[executionStatus];
   const dotClass = STATUS_DOT[executionStatus];
+
+  const displayMethod = config.methodOverride ?? route.method;
+  const displayPath = config.pathOverride ?? route.path;
+  const isOverridden = !!(config.methodOverride || config.pathOverride);
 
   return (
     <div
@@ -36,9 +40,12 @@ export const RouteNode = memo(function RouteNode({ data, selected }: NodeProps<F
     >
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 bg-gray-900/60 border-b border-gray-700">
-        <Badge method={route.method} />
-        <span className="text-xs font-mono text-gray-200 truncate flex-1" title={route.path}>
-          {route.path}
+        <Badge method={displayMethod} />
+        <span
+          className={`text-xs font-mono truncate flex-1 ${isOverridden ? 'text-amber-300' : 'text-gray-200'}`}
+          title={displayPath}
+        >
+          {displayPath}
         </span>
         <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
       </div>

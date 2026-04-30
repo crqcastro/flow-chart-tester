@@ -53,6 +53,7 @@ function resolveConfigVars(config: NodeConfig, vars: Record<string, string>): No
   return {
     ...config,
     baseUrlOverride: config.baseUrlOverride ? r(config.baseUrlOverride) : undefined,
+    pathOverride: config.pathOverride ? r(config.pathOverride) : undefined,
     payloadJson: r(config.payloadJson),
     headers: config.headers.map((h) => ({ ...h, key: r(h.key), value: r(h.value) })),
     pathParams: config.pathParams.map((p) => ({ ...p, value: r(p.value) })),
@@ -62,7 +63,7 @@ function resolveConfigVars(config: NodeConfig, vars: Record<string, string>): No
 
 function buildUrl(config: NodeConfig, route: FlowNode['data']['route']): string {
   const base = (config.baseUrlOverride ?? route.baseUrl).replace(/\/$/, '');
-  let path = route.path;
+  let path = config.pathOverride ?? route.path;
 
   for (const param of config.pathParams) {
     if (param.enabled !== false && param.value) {
@@ -144,7 +145,8 @@ async function executeNode(
   const url = proxyUrl ? `${proxyUrl.replace(/\/$/, '')}/${encodeURIComponent(rawUrl)}` : rawUrl;
   const headers = buildHeaders(effectiveConfig);
 
-  const isBodyMethod = !['GET', 'HEAD', 'OPTIONS'].includes(route.method);
+  const effectiveMethod = effectiveConfig.methodOverride ?? route.method;
+  const isBodyMethod = !['GET', 'HEAD', 'OPTIONS'].includes(effectiveMethod);
   const body = isBodyMethod && effectiveConfig.payloadJson?.trim()
     ? effectiveConfig.payloadJson
     : undefined;
@@ -153,14 +155,14 @@ async function executeNode(
     headers['Content-Type'] = 'application/json';
   }
 
-  const request: SerializedRequest = { method: route.method, url, headers, body };
+  const request: SerializedRequest = { method: effectiveMethod, url, headers, body };
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), effectiveConfig.timeoutMs ?? 30000);
 
   try {
     const res = await fetch(url, {
-      method: route.method,
+      method: effectiveMethod,
       headers,
       body,
       signal: controller.signal,

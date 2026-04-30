@@ -2,6 +2,9 @@ import { useFlowStore } from '../../store/flowStore';
 import { JsonEditor } from '../ui/JsonEditor';
 import { VarInput } from '../ui/VarInput';
 import type { FlowNode } from '../../types/flow';
+import type { HttpMethod } from '../../types/swagger';
+
+const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 interface PayloadEditorProps {
   node: FlowNode;
@@ -11,7 +14,8 @@ export function PayloadEditor({ node }: PayloadEditorProps) {
   const updateNodeConfig = useFlowStore((s) => s.updateNodeConfig);
   const { route, config } = node.data;
 
-  const isBodyMethod = !['GET', 'HEAD', 'OPTIONS'].includes(route.method);
+  const effectiveMethod = config.methodOverride ?? route.method;
+  const isBodyMethod = !['GET', 'HEAD', 'OPTIONS'].includes(effectiveMethod);
 
   // Path params
   const hasPathParams = config.pathParams.length > 0;
@@ -19,6 +23,44 @@ export function PayloadEditor({ node }: PayloadEditorProps) {
 
   return (
     <div className="flex flex-col gap-4">
+
+      {/* Method + Path override */}
+      <div>
+        <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Chamada</label>
+        <div className="flex gap-2">
+          <div className="flex flex-col gap-0.5">
+            <select
+              value={effectiveMethod}
+              onChange={(e) => {
+                const m = e.target.value as HttpMethod;
+                updateNodeConfig(node.id, { methodOverride: m === route.method ? undefined : m });
+              }}
+              className="px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:border-violet-500"
+            >
+              {METHODS.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 flex flex-col gap-0.5">
+            <VarInput
+              value={config.pathOverride ?? route.path}
+              onChange={(v) => updateNodeConfig(node.id, { pathOverride: v === route.path ? undefined : v || undefined })}
+              className="w-full px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white font-mono focus:outline-none focus:border-violet-500"
+              placeholder={route.path}
+            />
+          </div>
+        </div>
+        {(config.methodOverride || config.pathOverride) && (
+          <button
+            onClick={() => updateNodeConfig(node.id, { methodOverride: undefined, pathOverride: undefined })}
+            className="mt-1 text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+          >
+            ↩ Restaurar original ({route.method} {route.path})
+          </button>
+        )}
+      </div>
+
       {/* Base URL override */}
       <div>
         <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">URL Base</label>

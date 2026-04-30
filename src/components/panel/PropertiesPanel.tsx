@@ -1,27 +1,32 @@
 import { useState } from 'react';
 import { useFlowStore } from '../../store/flowStore';
+import { useExecutionStore } from '../../store/executionStore';
 import { Badge } from '../ui/Badge';
 import { PayloadEditor } from './PayloadEditor';
 import { HeadersEditor } from './HeadersEditor';
 import { ExpectedEditor } from './ExpectedEditor';
+import { ResultPanel } from './ResultPanel';
 
-type Tab = 'requisicao' | 'headers' | 'resposta';
+type Tab = 'requisicao' | 'headers' | 'resposta' | 'resultado';
 
 export function PropertiesPanel() {
   const [tab, setTab] = useState<Tab>('requisicao');
   const selectedNodeId = useFlowStore((s) => s.selectedNodeId);
   const nodes = useFlowStore((s) => s.nodes);
   const setSelectedNode = useFlowStore((s) => s.setSelectedNode);
+  const results = useExecutionStore((s) => s.results);
 
   const node = nodes.find((n) => n.id === selectedNodeId);
   if (!node) return null;
 
-  const { route } = node.data;
+  const { route, executionStatus } = node.data;
+  const result = selectedNodeId ? results.get(selectedNodeId) : undefined;
 
-  const tabs: { id: Tab; label: string }[] = [
+  const tabs: { id: Tab; label: string; badge?: string }[] = [
     { id: 'requisicao', label: 'Requisição' },
     { id: 'headers', label: 'Headers' },
-    { id: 'resposta', label: 'Resposta' },
+    { id: 'resposta', label: 'Esperado' },
+    { id: 'resultado', label: 'Resultado', badge: result ? (result.validationResult.passed && !result.error ? '✓' : '✗') : undefined },
   ];
 
   return (
@@ -35,6 +40,11 @@ export function PropertiesPanel() {
           </div>
           {route.summary && (
             <p className="text-[10px] text-gray-500 truncate">{route.summary}</p>
+          )}
+          {executionStatus !== 'idle' && (
+            <span className={`text-[10px] ${executionStatus === 'success' ? 'text-green-400' : executionStatus === 'error' ? 'text-red-400' : 'text-blue-400'}`}>
+              {executionStatus === 'success' ? '✓ Sucesso' : executionStatus === 'error' ? '✗ Falhou' : '⏳ Executando'}
+            </span>
           )}
         </div>
         <button
@@ -53,13 +63,16 @@ export function PropertiesPanel() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 py-2 text-xs transition-colors ${
+            className={`flex-1 py-2 text-xs transition-colors relative ${
               tab === t.id
                 ? 'text-violet-400 border-b-2 border-violet-500 -mb-px'
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
             {t.label}
+            {t.badge && (
+              <span className={`ml-1 ${t.badge === '✓' ? 'text-green-400' : 'text-red-400'}`}>{t.badge}</span>
+            )}
           </button>
         ))}
       </div>
@@ -69,6 +82,7 @@ export function PropertiesPanel() {
         {tab === 'requisicao' && <PayloadEditor node={node} />}
         {tab === 'headers' && <HeadersEditor node={node} />}
         {tab === 'resposta' && <ExpectedEditor node={node} />}
+        {tab === 'resultado' && <ResultPanel result={result} />}
       </div>
     </div>
   );

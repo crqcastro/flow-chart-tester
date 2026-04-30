@@ -40,20 +40,10 @@ function FlowCanvasInner() {
         setSelectedNode(null);
         setSelectedEdge(null);
       }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedNodeId || selectedEdgeId)) {
-        if (selectedNodeId) {
-          onNodesChange([{ type: 'remove', id: selectedNodeId }]);
-          setSelectedNode(null);
-        }
-        if (selectedEdgeId) {
-          onEdgesChange([{ type: 'remove', id: selectedEdgeId }]);
-          setSelectedEdge(null);
-        }
-      }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selectedNodeId, selectedEdgeId, onNodesChange, onEdgesChange, setSelectedNode, setSelectedEdge]);
+  }, [setSelectedNode, setSelectedEdge]);
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -155,8 +145,7 @@ function FlowCanvasInner() {
       {/* Keyboard hints */}
       {(selectedNodeId || selectedEdgeId) && (
         <div className="absolute top-3 right-3 text-xs text-gray-500 bg-gray-900/80 px-2 py-1 rounded pointer-events-none">
-          <kbd className="px-1 bg-gray-800 rounded">Esc</kbd> desselecionar ·{' '}
-          <kbd className="px-1 bg-gray-800 rounded">Del</kbd> remover
+          <kbd className="px-1 bg-gray-800 rounded">Esc</kbd> desselecionar
         </div>
       )}
 

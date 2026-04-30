@@ -56,11 +56,11 @@ function resolveConfigVars(
 ): NodeConfig {
   if (Object.keys(vars).length === 0) return config;
   const r = (s: string) => resolveVariables(s, vars);
-  // Always resolve the effective base URL and path (override takes priority over route value)
+  // Resolve the URL: user provides the complete URL, only {{vars}} are substituted
+  const rawUrl = config.urlOverride ?? (route.baseUrl + route.path);
   return {
     ...config,
-    baseUrlOverride: r(config.baseUrlOverride ?? route.baseUrl) || undefined,
-    pathOverride: r(config.pathOverride ?? route.path) || undefined,
+    urlOverride: r(rawUrl) || undefined,
     payloadJson: r(config.payloadJson),
     headers: config.headers.map((h) => ({ ...h, key: r(h.key), value: r(h.value) })),
     pathParams: config.pathParams.map((p) => ({ ...p, value: r(p.value) })),
@@ -69,12 +69,12 @@ function resolveConfigVars(
 }
 
 function buildUrl(config: NodeConfig, route: FlowNode['data']['route']): string {
-  const base = (config.baseUrlOverride ?? route.baseUrl).replace(/\/$/, '');
-  let path = config.pathOverride ?? route.path;
+  // User provides the complete URL; only path param substitution and query string appending happen
+  let url = config.urlOverride ?? (route.baseUrl + route.path);
 
   for (const param of config.pathParams) {
     if (param.enabled !== false && param.value) {
-      path = path.replace(`{${param.key}}`, encodeURIComponent(param.value));
+      url = url.replace(`{${param.key}}`, encodeURIComponent(param.value));
     }
   }
 
@@ -82,7 +82,7 @@ function buildUrl(config: NodeConfig, route: FlowNode['data']['route']): string 
     .filter((q) => q.enabled && q.value)
     .map((q) => `${encodeURIComponent(q.key)}=${encodeURIComponent(q.value)}`);
 
-  return base + path + (queryParts.length ? `?${queryParts.join('&')}` : '');
+  return url + (queryParts.length ? `?${queryParts.join('&')}` : '');
 }
 
 function buildHeaders(config: NodeConfig): Record<string, string> {

@@ -17,9 +17,9 @@ export interface NodeConfig {
   pathParams: KeyValuePair[];
   queryParams: KeyValuePair[];
   enabled: boolean;
-  baseUrlOverride?: string;
+  /** Complete URL — only {{variable}} substitution is applied, nothing added or removed. */
+  urlOverride?: string;
   methodOverride?: HttpMethod;
-  pathOverride?: string;
   timeoutMs: number;
   responseExtractors: ResponseExtractor[];
 }

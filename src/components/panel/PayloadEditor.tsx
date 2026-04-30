@@ -24,53 +24,37 @@ export function PayloadEditor({ node }: PayloadEditorProps) {
   return (
     <div className="flex flex-col gap-4">
 
-      {/* Method + Path override */}
+      {/* Method + URL */}
       <div>
         <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Chamada</label>
         <div className="flex gap-2">
-          <div className="flex flex-col gap-0.5">
-            <select
-              value={effectiveMethod}
-              onChange={(e) => {
-                const m = e.target.value as HttpMethod;
-                updateNodeConfig(node.id, { methodOverride: m === route.method ? undefined : m });
-              }}
-              className="px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:border-violet-500"
-            >
-              {METHODS.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1 flex flex-col gap-0.5">
-            <VarInput
-              value={config.pathOverride ?? route.path}
-              onChange={(v) => updateNodeConfig(node.id, { pathOverride: v === route.path ? undefined : v || undefined })}
-              className="w-full px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white font-mono focus:outline-none focus:border-violet-500"
-              placeholder={route.path}
-            />
-          </div>
+          <select
+            value={effectiveMethod}
+            onChange={(e) => {
+              const m = e.target.value as HttpMethod;
+              updateNodeConfig(node.id, { methodOverride: m === route.method ? undefined : m });
+            }}
+            className="px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:border-violet-500"
+          >
+            {METHODS.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <VarInput
+            value={config.urlOverride ?? (route.baseUrl + route.path)}
+            onChange={(v) => updateNodeConfig(node.id, { urlOverride: v || undefined })}
+            className="flex-1 px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white font-mono focus:outline-none focus:border-violet-500"
+            placeholder={route.baseUrl + route.path}
+          />
         </div>
-        {(config.methodOverride || config.pathOverride) && (
+        {(config.methodOverride || config.urlOverride) && (
           <button
-            onClick={() => updateNodeConfig(node.id, { methodOverride: undefined, pathOverride: undefined })}
+            onClick={() => updateNodeConfig(node.id, { methodOverride: undefined, urlOverride: undefined })}
             className="mt-1 text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
           >
-            ↩ Restaurar original ({route.method} {route.path})
+            ↩ Restaurar original ({route.method} {route.baseUrl}{route.path})
           </button>
         )}
-      </div>
-
-      {/* Base URL override */}
-      <div>
-        <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">URL Base</label>
-        <VarInput
-          value={config.baseUrlOverride ?? route.baseUrl}
-          onChange={(v) => updateNodeConfig(node.id, { baseUrlOverride: v || undefined })}
-          className="w-full px-2 py-1.5 text-xs bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 font-mono"
-          placeholder={route.baseUrl}
-        />
-        <p className="text-[10px] text-gray-600 mt-0.5 font-mono">{route.path}</p>
       </div>
 
       {/* Path params */}

@@ -129,7 +129,7 @@ function NodeRow({ node, result, pending = false }: NodeRowProps) {
   const { route, config, executionStatus } = node.data;
   const displayMethod = config.methodOverride ?? route.method;
   // Show resolved path only (no protocol/host) — full URL visible in expanded details
-  let displayUrl = config.pathOverride ?? route.path;
+  let displayUrl = config.urlOverride ?? route.path;
   if (result?.request.url) {
     try {
       const u = new URL(result.request.url);

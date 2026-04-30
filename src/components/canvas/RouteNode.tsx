@@ -3,6 +3,7 @@ import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { FlowNode, ExecutionStatus } from '../../types/flow';
 import { Badge } from '../ui/Badge';
+import { useFlowStore } from '../../store/flowStore';
 
 const STATUS_RING: Record<ExecutionStatus, string> = {
   idle:    '',
@@ -20,14 +21,22 @@ const STATUS_DOT: Record<ExecutionStatus, string> = {
   skipped: 'bg-gray-500',
 };
 
-export const RouteNode = memo(function RouteNode({ data, selected }: NodeProps<FlowNode>) {
+export const RouteNode = memo(function RouteNode({ id, data, selected }: NodeProps<FlowNode>) {
   const { route, config, executionStatus } = data;
   const ringClass = STATUS_RING[executionStatus];
   const dotClass = STATUS_DOT[executionStatus];
+  const onNodesChange = useFlowStore((s) => s.onNodesChange);
+  const setSelectedNode = useFlowStore((s) => s.setSelectedNode);
 
   const displayMethod = config.methodOverride ?? route.method;
-  const displayPath = config.pathOverride ?? route.path;
-  const isOverridden = !!(config.methodOverride || config.pathOverride);
+  const displayPath = config.urlOverride ?? route.path;
+  const isOverridden = !!(config.methodOverride || config.urlOverride);
+
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedNode(null);
+    onNodesChange([{ type: 'remove', id }]);
+  }
 
   return (
     <div
@@ -48,6 +57,16 @@ export const RouteNode = memo(function RouteNode({ data, selected }: NodeProps<F
           {displayPath}
         </span>
         <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
+        {selected && (
+          <button
+            onClick={handleDelete}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="nodrag ml-1 w-4 h-4 flex items-center justify-center rounded text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors shrink-0"
+            title="Remover nó"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {/* Body */}

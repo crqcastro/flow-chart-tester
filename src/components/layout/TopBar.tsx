@@ -1,4 +1,8 @@
-export function TopBar() {
+interface TopBarProps {
+  onImportClick?: () => void;
+}
+
+export function TopBar({ onImportClick }: TopBarProps) {
   return (
     <header className="flex items-center justify-between px-4 h-12 bg-gray-900 border-b border-gray-800 shrink-0">
       <div className="flex items-center gap-2">
@@ -9,6 +13,14 @@ export function TopBar() {
         <span className="text-xs text-gray-500">— Testador Visual de APIs</span>
       </div>
       <div className="flex items-center gap-2">
+        {onImportClick && (
+          <button
+            onClick={onImportClick}
+            className="px-3 py-1.5 text-xs rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+          >
+            Importar Swagger
+          </button>
+        )}
         <button
           disabled
           className="px-3 py-1.5 text-xs rounded bg-gray-800 text-gray-500 cursor-not-allowed"
